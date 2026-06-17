@@ -14,6 +14,18 @@ PRIORITY_ORDER = {
     "MEDIUM": 2,
     "LOW": 1
 }
+class DSLSyntaxError(Exception):
+    """Exception raised for syntax errors in the Study Planner DSL."""
+    def __init__(self, message, line_num=None):
+        super().__init__(message)
+        self.message = message
+        self.line_num = line_num
+
+    def __str__(self):
+        if self.line_num is not None:
+            return f"Line {self.line_num}: {self.message}"
+        return self.message
+
 def parse_dsl(filepath):
     """
     Parses the study planner DSL file.
@@ -22,102 +34,109 @@ def parse_dsl(filepath):
         tasks (list): A list of parsed task dictionaries.
     """
     if not os.path.exists(filepath):
-        print(f"Error: File '{filepath}' does not exist.")
-        sys.exit(1)
+        raise FileNotFoundError(f"Error: File '{filepath}' does not exist.")
+    with open(filepath, "r", encoding="utf-8") as file:
+        lines = file.readlines()
+    return parse_dsl_lines(lines)
+
+def parse_dsl_lines(lines):
+    """
+    Parses study planner DSL from a list of strings (lines).
+    Returns:
+        persona (str): The persona name or "BALANCED" if not specified.
+        tasks (list): A list of parsed task dictionaries.
+    """
     persona = "BALANCED"
     tasks = []
     current_task = {}
     in_task = False
-    with open(filepath, "r") as file:
-        for line_num, line in enumerate(file, 1):
-            line = line.strip()
-            # Skip empty lines or comments starting with #
-            if not line or line.startswith("#"):
-                continue
-            # Check for persona definition (must be outside task blocks)
-            if line.startswith("PERSONA"):
-                parts = line.split(maxsplit=1)
-                if len(parts) < 2:
-                    print(f"Error on line {line_num}: PERSONA keyword requires a value.")
-                    sys.exit(1)
-                persona = parts[1].upper()
-                if persona not in PERSONAS:
-                    print(f"Warning on line {line_num}: Unknown persona '{persona}'. Defaulting to BALANCED.")
-                    persona = "BALANCED"
-                continue
-            # Start of a task block
-            if line.startswith("TASK"):
-                if in_task:
-                    print(f"Error on line {line_num}: Nested TASK block is not allowed.")
-                    sys.exit(1)
-                parts = line.split(maxsplit=1)
-                if len(parts) < 2:
-                    print(f"Error on line {line_num}: TASK keyword requires a task name.")
-                    sys.exit(1)
-                current_task = {"name": parts[1]}
-                in_task = True
-                continue
-            # End of a task block
-            if line == "END":
-                if not in_task:
-                    print(f"Error on line {line_num}: END without starting a TASK.")
-                    sys.exit(1)
-                
-                # Validate task completeness
-                required_keys = ["SUBJECT", "DUE", "PRIORITY", "DURATION", "STATUS"]
-                missing = [key for key in required_keys if key not in current_task]
-                if missing:
-                    print(f"Error on line {line_num}: Task '{current_task.get('name', 'UNKNOWN')}' is missing fields: {', '.join(missing)}")
-                    sys.exit(1)
-                
-                # Parse DURATION (e.g. '3h' -> 3)
-                duration_str = current_task["DURATION"]
-                if duration_str.endswith("h"):
-                    try:
-                        current_task["duration_hours"] = int(duration_str[:-1])
-                    except ValueError:
-                        print(f"Error on line {line_num}: Invalid DURATION format '{duration_str}'. Must be an integer followed by 'h' (e.g., 3h).")
-                        sys.exit(1)
-                else:
-                    print(f"Error on line {line_num}: DURATION must end with 'h' (e.g., 3h).")
-                    sys.exit(1)
-                # Validate PRIORITY
-                priority = current_task["PRIORITY"].upper()
-                if priority not in PRIORITY_ORDER:
-                    print(f"Error on line {line_num}: Invalid PRIORITY '{priority}'. Must be HIGH, MEDIUM, or LOW.")
-                    sys.exit(1)
-                current_task["priority_val"] = PRIORITY_ORDER[priority]
-                # Validate STATUS
-                status = current_task["STATUS"].upper()
-                if status not in ["PENDING", "COMPLETED"]:
-                    print(f"Error on line {line_num}: Invalid STATUS '{status}'. Must be PENDING or COMPLETED.")
-                    sys.exit(1)
-                current_task["STATUS"] = status
-                # Validate DUE date format
-                due_date_str = current_task["DUE"]
-                try:
-                    current_task["due_date"] = datetime.strptime(due_date_str, "%Y-%m-%d").date()
-                except ValueError:
-                    print(f"Error on line {line_num}: Invalid DUE date format '{due_date_str}'. Must be YYYY-MM-DD.")
-                    sys.exit(1)
-                tasks.append(current_task)
-                current_task = {}
-                in_task = False
-                continue
-            # Parse key-value pairs inside task block
+    
+    for line_num, line in enumerate(lines, 1):
+        line = line.strip()
+        # Skip empty lines or comments starting with #
+        if not line or line.startswith("#"):
+            continue
+        
+        # Check for persona definition (must be outside task blocks)
+        if line.startswith("PERSONA"):
+            parts = line.split(maxsplit=1)
+            if len(parts) < 2:
+                raise DSLSyntaxError("PERSONA keyword requires a value.", line_num)
+            persona = parts[1].upper()
+            if persona not in PERSONAS:
+                print(f"Warning on line {line_num}: Unknown persona '{persona}'. Defaulting to BALANCED.")
+                persona = "BALANCED"
+            continue
+            
+        # Start of a task block
+        if line.startswith("TASK"):
             if in_task:
-                parts = line.split(maxsplit=1)
-                if len(parts) < 2:
-                    print(f"Error on line {line_num}: Field '{parts[0]}' requires a value.")
-                    sys.exit(1)
-                key, value = parts[0].upper(), parts[1]
-                current_task[key] = value
+                raise DSLSyntaxError("Nested TASK block is not allowed.", line_num)
+            parts = line.split(maxsplit=1)
+            if len(parts) < 2:
+                raise DSLSyntaxError("TASK keyword requires a task name.", line_num)
+            current_task = {"name": parts[1]}
+            in_task = True
+            continue
+            
+        # End of a task block
+        if line == "END":
+            if not in_task:
+                raise DSLSyntaxError("END without starting a TASK.", line_num)
+            
+            # Validate task completeness
+            required_keys = ["SUBJECT", "DUE", "PRIORITY", "DURATION", "STATUS"]
+            missing = [key for key in required_keys if key not in current_task]
+            if missing:
+                raise DSLSyntaxError(f"Task '{current_task.get('name', 'UNKNOWN')}' is missing fields: {', '.join(missing)}", line_num)
+            
+            # Parse DURATION (e.g. '3h' -> 3)
+            duration_str = current_task["DURATION"]
+            if duration_str.endswith("h"):
+                try:
+                    current_task["duration_hours"] = int(duration_str[:-1])
+                except ValueError:
+                    raise DSLSyntaxError(f"Invalid DURATION format '{duration_str}'. Must be an integer followed by 'h' (e.g., 3h).", line_num)
             else:
-                print(f"Error on line {line_num}: Keyword '{line}' must be inside a TASK block.")
-                sys.exit(1)
+                raise DSLSyntaxError("DURATION must end with 'h' (e.g., 3h).", line_num)
+                
+            # Validate PRIORITY
+            priority = current_task["PRIORITY"].upper()
+            if priority not in PRIORITY_ORDER:
+                raise DSLSyntaxError(f"Invalid PRIORITY '{priority}'. Must be HIGH, MEDIUM, or LOW.", line_num)
+            current_task["priority_val"] = PRIORITY_ORDER[priority]
+            
+            # Validate STATUS
+            status = current_task["STATUS"].upper()
+            if status not in ["PENDING", "COMPLETED"]:
+                raise DSLSyntaxError(f"Invalid STATUS '{status}'. Must be PENDING or COMPLETED.", line_num)
+            current_task["STATUS"] = status
+            
+            # Validate DUE date format
+            due_date_str = current_task["DUE"]
+            try:
+                current_task["due_date"] = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                raise DSLSyntaxError(f"Invalid DUE date format '{due_date_str}'. Must be YYYY-MM-DD.", line_num)
+                
+            tasks.append(current_task)
+            current_task = {}
+            in_task = False
+            continue
+            
+        # Parse key-value pairs inside task block
+        if in_task:
+            parts = line.split(maxsplit=1)
+            if len(parts) < 2:
+                raise DSLSyntaxError(f"Field '{parts[0]}' requires a value.", line_num)
+            key, value = parts[0].upper(), parts[1]
+            current_task[key] = value
+        else:
+            raise DSLSyntaxError(f"Keyword '{line}' must be inside a TASK block.", line_num)
+            
     if in_task:
-        print("Error: Reached end of file without closing the last TASK block with END.")
-        sys.exit(1)
+        raise DSLSyntaxError("Reached end of file without closing the last TASK block with END.")
+        
     return persona, tasks
 def schedule_tasks(persona, tasks, start_date_str):
     """
@@ -263,13 +282,11 @@ def main():
         dsl_file = sys.argv[1]
         override_persona = sys.argv[2].upper() if len(sys.argv) > 2 else None
         
-    if not os.path.exists(dsl_file):
-        print(f"Error: DSL file '{dsl_file}' not found.")
-        print("Usage: python3 parser.py [path_to_dsl_file] [optional_persona_override]")
+    try:
+        persona, tasks = parse_dsl(dsl_file)
+    except (FileNotFoundError, DSLSyntaxError) as e:
+        print(e)
         sys.exit(1)
-        
-    print(f"Parsing DSL file: {dsl_file}...")
-    persona, tasks = parse_dsl(dsl_file)
     
     if override_persona:
         if override_persona in PERSONAS:

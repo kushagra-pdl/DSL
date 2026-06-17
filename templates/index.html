@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An interactive glassmorphic planner powered by a custom study DSL. Generate personalized schedules based on your productivity persona.">
+    <title>Persona-Based Study Planner</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main stylesheet -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="glass-bg-animation"></div>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-calendar-check logo-icon"></i>
+                <h1>Study Planner <span class="accent-text">DSL</span></h1>
+            </div>
+            <p class="subtitle">Compile your work rules. Optimize your biological focus hours.</p>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="app-workspace">
+            <!-- Left Panel: DSL Editor & Controls -->
+            <section class="panel-editor glass-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-code"></i> DSL Input Editor</h2>
+                    <div class="preset-dropdown-container">
+                        <button id="btn-presets" class="btn-secondary dropdown-trigger">
+                            Presets <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <ul id="presets-menu" class="dropdown-menu">
+                            <li data-preset="night_owl"><i class="fa-solid fa-moon"></i> Night Owl Workload</li>
+                            <li data-preset="early_bird"><i class="fa-solid fa-sun"></i> Early Bird Routine</li>
+                            <li data-preset="balanced"><i class="fa-solid fa-scale-balanced"></i> Balanced Schedule</li>
+                            <li data-preset="empty"><i class="fa-solid fa-file-code"></i> Clear / Empty</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="editor-container">
+                    <textarea id="dsl-textarea" spellcheck="false" placeholder="# Type or load your DSL plan here..."></textarea>
+                </div>
+
+                <div class="editor-controls">
+                    <div class="control-group">
+                        <label for="start-date-input">Start Date</label>
+                        <input type="date" id="start-date-input" class="input-date">
+                    </div>
+                    <div class="control-group">
+                        <label for="persona-override-select">Persona Override</label>
+                        <select id="persona-override-select" class="select-persona">
+                            <option value="">Auto (Use DSL)</option>
+                            <option value="BALANCED">Balanced</option>
+                            <option value="NIGHT_OWL">Night Owl</option>
+                            <option value="EARLY_BIRD">Early Bird</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="btn-generate" class="btn-primary">
+                    <span>Generate Schedule</span>
+                    <i class="fa-solid fa-wand-magic-sparkles btn-icon"></i>
+                </button>
+            </section>
+
+            <!-- Right Panel: Visual Schedule Output -->
+            <section class="panel-schedule glass-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-calendar-days"></i> Generated Plan</h2>
+                    <div id="status-badge" class="badge">Idle</div>
+                </div>
+
+                <div id="output-view" class="output-container">
+                    <!-- Idle Welcome State -->
+                    <div id="view-idle" class="view-state active">
+                        <div class="empty-state">
+                            <div class="empty-icon-wrapper">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </div>
+                            <h3>Waiting for DSL Input</h3>
+                            <p>Load a preset on the left, or draft your tasks directly, then click <strong>Generate Schedule</strong> to build your visual learning calendar.</p>
+                        </div>
+                    </div>
+
+                    <!-- Loader State -->
+                    <div id="view-loading" class="view-state">
+                        <div class="loader-wrapper">
+                            <div class="spinner"></div>
+                            <p>Parsing rules & compiling schedule slots...</p>
+                        </div>
+                    </div>
+
+                    <!-- Error State -->
+                    <div id="view-error" class="view-state">
+                        <div class="error-card">
+                            <div class="error-header">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <h3>Compilation Failed</h3>
+                            </div>
+                            <p id="error-message">Syntax error on line 4</p>
+                            <div class="error-details">
+                                <span class="error-badge">Line <strong id="error-line">0</strong></span>
+                                <span class="error-hint">Verify your syntax and ensure keys match values correctly.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Success State: Schedule Output -->
+                    <div id="view-success" class="view-state">
+                        <!-- System Warnings (Amber Alerts) -->
+                        <div id="warnings-section" class="warnings-card hidden">
+                            <div class="warning-header">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                                <h4>Scheduler Warnings</h4>
+                            </div>
+                            <ul id="warnings-list"></ul>
+                        </div>
+
+                        <!-- Info Metadata Bar -->
+                        <div class="schedule-meta-bar">
+                            <div class="meta-item">
+                                <span class="meta-label">Active Persona:</span>
+                                <span id="meta-persona" class="meta-value">BALANCED</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Base Date:</span>
+                                <span id="meta-start-date" class="meta-value">2026-06-18</span>
+                            </div>
+                        </div>
+
+                        <!-- Visual Day Columns -->
+                        <div id="timeline-container" class="timeline-wrapper"></div>
+
+                        <!-- Completed Tasks Section -->
+                        <div class="completed-tasks-card">
+                            <div class="completed-header">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <h4>Completed Tasks Summary</h4>
+                            </div>
+                            <ul id="completed-tasks-list"></ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <p>Made with ❤️ for study productivity. Powered by Python & Flask.</p>
+        </footer>
+    </div>
+
+    <!-- Script imports -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
