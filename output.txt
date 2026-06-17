@@ -1,0 +1,31 @@
+============================================================
+PERSONAL STUDY PLANNER SCHEDULE
+Persona: BALANCED
+Schedule Start Date: 2026-06-18
+============================================================
+
+SYSTEM WARNINGS:
+  * WARNING: Task 'Ethics_Essay' (due 2026-06-18) was scheduled late (after due date).
+
+------------------------------------------------------------
+
+WEEKLY STUDY SESSIONS:
+
+Thursday, 2026-06-18:
+  09:00 - 11:00 | OS_Lab_Report (Operating_Systems)
+  11:00 - 12:00 | AI_Assignment (Artificial_Intelligence)
+  14:00 - 16:00 | AI_Assignment (Artificial_Intelligence)
+  16:00 - 17:00 | DBMS_Project (Database)
+
+Friday, 2026-06-19:
+  09:00 - 10:00 | DBMS_Project (Database)
+  10:00 - 11:00 | Ethics_Essay (Humanities) [LATE / PAST DUE]
+  11:00 - 12:00 | Computer_Networks_Quiz (Computer_Networks)
+  14:00 - 15:00 | Computer_Networks_Quiz (Computer_Networks)
+
+------------------------------------------------------------
+
+COMPLETED TASKS SUMMARY:
+  [✓] Mathematics_Revision (Mathematics) - Completed
+
+============================================================
