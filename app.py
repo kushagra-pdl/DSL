@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from flask import Flask, request, jsonify, render_template
-from parser import parse_dsl_lines, schedule_tasks, DSLSyntaxError, PERSONAS
+from parser import parse_dsl_lines, schedule_tasks, DSLSyntaxError, PERSONAS, register_custom_persona
 
 app = Flask(__name__)
 
@@ -28,7 +28,13 @@ def get_schedule():
 
         if persona_override:
             persona_override = persona_override.upper()
-            if persona_override in PERSONAS:
+            if persona_override.startswith("CUSTOM:"):
+                try:
+                    persona_override = register_custom_persona(persona_override)
+                    persona = persona_override
+                except ValueError:
+                    pass
+            elif persona_override in PERSONAS:
                 persona = persona_override
 
         schedule, completed_tasks, warnings = schedule_tasks(persona, tasks, start_date)
@@ -90,4 +96,4 @@ def get_schedule():
         }), 500
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5050, debug=True)

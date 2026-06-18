@@ -1,6 +1,6 @@
 ============================================================
 PERSONAL STUDY PLANNER SCHEDULE
-Persona: EARLY_BIRD
+Persona: NIGHT_OWL
 Schedule Start Date: 2026-06-18
 ============================================================
 
@@ -12,14 +12,14 @@ SYSTEM WARNINGS:
 WEEKLY STUDY SESSIONS:
 
 Thursday, 2026-06-18:
-  06:00 - 08:00 | OS_Lab_Report (Operating_Systems)
-  08:00 - 11:00 | AI_Assignment (Artificial_Intelligence)
-  11:00 - 12:00 | DBMS_Project (Database)
+  18:00 - 20:00 | OS_Lab_Report (Operating_Systems)
+  20:00 - 23:00 | AI_Assignment (Artificial_Intelligence)
+  23:00 - 24:00 | DBMS_Project (Database)
 
 Friday, 2026-06-19:
-  06:00 - 07:00 | DBMS_Project (Database)
-  07:00 - 08:00 | Ethics_Essay (Humanities) [LATE / PAST DUE]
-  08:00 - 10:00 | Computer_Networks_Quiz (Computer_Networks)
+  18:00 - 19:00 | DBMS_Project (Database)
+  19:00 - 20:00 | Ethics_Essay (Humanities) [LATE / PAST DUE]
+  20:00 - 22:00 | Computer_Networks_Quiz (Computer_Networks)
 
 ------------------------------------------------------------
 

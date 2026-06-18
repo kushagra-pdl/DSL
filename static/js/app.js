@@ -106,6 +106,32 @@ TASK Lab_Experiment
     STATUS    PENDING
 END`,
 
+    custom_hours: `PERSONA CUSTOM:8,9,10,11,14,15,16,17,20,21
+
+TASK Morning_Coding
+    SUBJECT   Software_Development
+    DUE       2026-06-20
+    PRIORITY  HIGH
+    DURATION  4h
+    STATUS    PENDING
+END
+
+TASK Afternoon_Review
+    SUBJECT   Research_Paper
+    DUE       2026-06-21
+    PRIORITY  MEDIUM
+    DURATION  2h
+    STATUS    PENDING
+END
+
+TASK Late_Reading
+    SUBJECT   Deep_Learning
+    DUE       2026-06-20
+    PRIORITY  LOW
+    DURATION  2h
+    STATUS    PENDING
+END`,
+
     empty: `# Custom DSL Study Plan
 PERSONA BALANCED
 

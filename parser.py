@@ -14,6 +14,26 @@ PRIORITY_ORDER = {
     "MEDIUM": 2,
     "LOW": 1
 }
+def register_custom_persona(persona_val):
+    """
+    Parses a CUSTOM:hr1,hr2,... string, validates it, and registers it in the global PERSONAS dict.
+    Returns the normalized key (e.g. 'CUSTOM:9,10,11').
+    Raises ValueError if the format or values are invalid.
+    """
+    if not persona_val.startswith("CUSTOM:"):
+        raise ValueError("Must start with CUSTOM:")
+    hours_str = "".join(persona_val.split(":", 1)[1].split())
+    custom_hours = [int(h) for h in hours_str.split(",") if h]
+    for h in custom_hours:
+        if not (0 <= h <= 23):
+            raise ValueError("Hours must be between 0 and 23.")
+    if not custom_hours:
+        raise ValueError("Must specify at least one hour.")
+    sorted_hours = sorted(list(set(custom_hours)))
+    normalized_key = f"CUSTOM:{','.join(map(str, sorted_hours))}"
+    PERSONAS[normalized_key] = sorted_hours
+    return normalized_key
+
 class DSLSyntaxError(Exception):
     """Exception raised for syntax errors in the Study Planner DSL."""
     def __init__(self, message, line_num=None):
@@ -62,9 +82,16 @@ def parse_dsl_lines(lines):
             parts = line.split(maxsplit=1)
             if len(parts) < 2:
                 raise DSLSyntaxError("PERSONA keyword requires a value.", line_num)
-            persona = parts[1].upper()
-            if persona not in PERSONAS:
-                print(f"Warning on line {line_num}: Unknown persona '{persona}'. Defaulting to BALANCED.")
+            persona_val = parts[1].strip().upper()
+            if persona_val.startswith("CUSTOM:"):
+                try:
+                    persona = register_custom_persona(persona_val)
+                except ValueError as e:
+                    raise DSLSyntaxError(f"Invalid CUSTOM persona format: {str(e)}", line_num)
+            elif persona_val in PERSONAS:
+                persona = persona_val
+            else:
+                print(f"Warning on line {line_num}: Unknown persona '{persona_val}'. Defaulting to BALANCED.")
                 persona = "BALANCED"
             continue
             
@@ -289,7 +316,14 @@ def main():
         sys.exit(1)
     
     if override_persona:
-        if override_persona in PERSONAS:
+        if override_persona.startswith("CUSTOM:"):
+            try:
+                override_persona = register_custom_persona(override_persona)
+                print(f"Overriding persona '{persona}' with: {override_persona}")
+                persona = override_persona
+            except ValueError as e:
+                print(f"Warning: Override persona '{override_persona}' is invalid ({str(e)}). Using '{persona}'.")
+        elif override_persona in PERSONAS:
             print(f"Overriding persona '{persona}' with: {override_persona}")
             persona = override_persona
         else:
