@@ -49,6 +49,17 @@ class DSLSyntaxError(Exception):
             return f"Line {self.line_num}: {self.message}"
         return self.message
 
+def parse_dsl_content(data):
+    """
+    Parses the study planner DSL content string.
+    Returns:
+        persona (str): The persona name or "BALANCED" if not specified.
+        tasks (list): A list of parsed task dictionaries.
+    """
+    lexer = lex.lex()
+    parser = yacc.yacc()
+    return parser.parse(data, lexer=lexer)
+
 def parse_dsl(filepath):
     """
     Parses the study planner DSL file.
@@ -61,10 +72,7 @@ def parse_dsl(filepath):
     with open(filepath, "r", encoding="utf-8") as file:
         data = file.read()
     
-    lexer = lex.lex()
-    parser = yacc.yacc()
-    
-    return parser.parse(data, lexer=lexer)
+    return parse_dsl_content(data)
 
 # Lexer definitions
 tokens = (
