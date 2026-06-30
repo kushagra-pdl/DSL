@@ -1,6 +1,8 @@
 import sys
 import os
 from datetime import datetime, timedelta
+import ply.lex as lex
+import ply.yacc as yacc
 # Default start date for scheduling (tomorrow relative to current conversation local time 2026-06-17)
 DEFAULT_START_DATE = "2026-06-18"
 # Persona hour definitions (24-hour format slots)
@@ -56,115 +58,205 @@ def parse_dsl(filepath):
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"Error: File '{filepath}' does not exist.")
     with open(filepath, "r", encoding="utf-8") as file:
-        lines = file.readlines()
-    return parse_dsl_lines(lines)
+        data = file.read()
+    
+    lexer = lex.lex()
+    parser = yacc.yacc()
+    
+    return parser.parse(data, lexer=lexer)
 
-def parse_dsl_lines(lines):
-    """
-    Parses study planner DSL from a list of strings (lines).
-    Returns:
-        persona (str): The persona name or "BALANCED" if not specified.
-        tasks (list): A list of parsed task dictionaries.
-    """
+# Lexer definitions
+tokens = (
+    'PERSONA',
+    'TASK',
+    'END',
+    'SUBJECT',
+    'DUE',
+    'PRIORITY',
+    'DURATION',
+    'STATUS',
+    'VALUE',
+)
+
+states = (
+    ('value', 'exclusive'),
+)
+
+def t_ANY_COMMENT(t):
+    r'\#.*'
+    pass
+
+def t_PERSONA(t):
+    r'PERSONA'
+    t.lexer.begin('value')
+    return t
+
+def t_TASK(t):
+    r'TASK'
+    t.lexer.begin('value')
+    return t
+
+def t_SUBJECT(t):
+    r'SUBJECT'
+    t.lexer.begin('value')
+    return t
+
+def t_DUE(t):
+    r'DUE'
+    t.lexer.begin('value')
+    return t
+
+def t_PRIORITY(t):
+    r'PRIORITY'
+    t.lexer.begin('value')
+    return t
+
+def t_DURATION(t):
+    r'DURATION'
+    t.lexer.begin('value')
+    return t
+
+def t_STATUS(t):
+    r'STATUS'
+    t.lexer.begin('value')
+    return t
+
+def t_END(t):
+    r'END'
+    return t
+
+def t_ANY_newline(t):
+    r'\n+'
+    t.lexer.lineno += len(t.value)
+    t.lexer.begin('INITIAL')
+
+t_ANY_ignore = ' \t\r'
+
+def t_value_VALUE(t):
+    r'[^\n]+'
+    t.value = t.value.strip()
+    t.lexer.begin('INITIAL')
+    if t.value:
+        return t
+
+def t_ANY_error(t):
+    raise DSLSyntaxError(f"Illegal character '{t.value[0]}'", t.lineno)
+
+# Parser definitions
+def p_planner(p):
+    '''planner : statements'''
     persona = "BALANCED"
     tasks = []
-    current_task = {}
-    in_task = False
-    
-    for line_num, line in enumerate(lines, 1):
-        line = line.strip()
-        # Skip empty lines or comments starting with #
-        if not line or line.startswith("#"):
-            continue
-        
-        # Check for persona definition (must be outside task blocks)
-        if line.startswith("PERSONA"):
-            parts = line.split(maxsplit=1)
-            if len(parts) < 2:
-                raise DSLSyntaxError("PERSONA keyword requires a value.", line_num)
-            persona_val = parts[1].strip().upper()
-            if persona_val.startswith("CUSTOM:"):
-                try:
-                    persona = register_custom_persona(persona_val)
-                except ValueError as e:
-                    raise DSLSyntaxError(f"Invalid CUSTOM persona format: {str(e)}", line_num)
-            elif persona_val in PERSONAS:
-                persona = persona_val
-            else:
-                print(f"Warning on line {line_num}: Unknown persona '{persona_val}'. Defaulting to BALANCED.")
-                persona = "BALANCED"
-            continue
-            
-        # Start of a task block
-        if line.startswith("TASK"):
-            if in_task:
-                raise DSLSyntaxError("Nested TASK block is not allowed.", line_num)
-            parts = line.split(maxsplit=1)
-            if len(parts) < 2:
-                raise DSLSyntaxError("TASK keyword requires a task name.", line_num)
-            current_task = {"name": parts[1]}
-            in_task = True
-            continue
-            
-        # End of a task block
-        if line == "END":
-            if not in_task:
-                raise DSLSyntaxError("END without starting a TASK.", line_num)
-            
-            # Validate task completeness
-            required_keys = ["SUBJECT", "DUE", "PRIORITY", "DURATION", "STATUS"]
-            missing = [key for key in required_keys if key not in current_task]
-            if missing:
-                raise DSLSyntaxError(f"Task '{current_task.get('name', 'UNKNOWN')}' is missing fields: {', '.join(missing)}", line_num)
-            
-            # Parse DURATION (e.g. '3h' -> 3)
-            duration_str = current_task["DURATION"]
-            if duration_str.endswith("h"):
-                try:
-                    current_task["duration_hours"] = int(duration_str[:-1])
-                except ValueError:
-                    raise DSLSyntaxError(f"Invalid DURATION format '{duration_str}'. Must be an integer followed by 'h' (e.g., 3h).", line_num)
-            else:
-                raise DSLSyntaxError("DURATION must end with 'h' (e.g., 3h).", line_num)
-                
-            # Validate PRIORITY
-            priority = current_task["PRIORITY"].upper()
-            if priority not in PRIORITY_ORDER:
-                raise DSLSyntaxError(f"Invalid PRIORITY '{priority}'. Must be HIGH, MEDIUM, or LOW.", line_num)
-            current_task["priority_val"] = PRIORITY_ORDER[priority]
-            
-            # Validate STATUS
-            status = current_task["STATUS"].upper()
-            if status not in ["PENDING", "COMPLETED"]:
-                raise DSLSyntaxError(f"Invalid STATUS '{status}'. Must be PENDING or COMPLETED.", line_num)
-            current_task["STATUS"] = status
-            
-            # Validate DUE date format
-            due_date_str = current_task["DUE"]
-            try:
-                current_task["due_date"] = datetime.strptime(due_date_str, "%Y-%m-%d").date()
-            except ValueError:
-                raise DSLSyntaxError(f"Invalid DUE date format '{due_date_str}'. Must be YYYY-MM-DD.", line_num)
-                
-            tasks.append(current_task)
-            current_task = {}
-            in_task = False
-            continue
-            
-        # Parse key-value pairs inside task block
-        if in_task:
-            parts = line.split(maxsplit=1)
-            if len(parts) < 2:
-                raise DSLSyntaxError(f"Field '{parts[0]}' requires a value.", line_num)
-            key, value = parts[0].upper(), parts[1]
-            current_task[key] = value
+    for stmt in p[1]:
+        if stmt[0] == 'persona':
+            persona = stmt[1]
+        elif stmt[0] == 'task':
+            tasks.append(stmt[1])
+    p[0] = (persona, tasks)
+
+def p_statements(p):
+    '''statements : statements statement
+                  | empty'''
+    if len(p) == 3:
+        if p[2]:
+            p[0] = p[1] + [p[2]]
         else:
-            raise DSLSyntaxError(f"Keyword '{line}' must be inside a TASK block.", line_num)
-            
-    if in_task:
-        raise DSLSyntaxError("Reached end of file without closing the last TASK block with END.")
+            p[0] = p[1]
+    else:
+        p[0] = []
+
+def p_statement(p):
+    '''statement : persona_stmt
+                 | task_block'''
+    p[0] = p[1]
+
+def p_persona_stmt(p):
+    '''persona_stmt : PERSONA VALUE'''
+    persona_val = p[2].upper()
+    if persona_val.startswith("CUSTOM:"):
+        try:
+            persona = register_custom_persona(persona_val)
+        except ValueError as e:
+            raise DSLSyntaxError(f"Invalid CUSTOM persona format: {str(e)}", p.lineno(1))
+    elif persona_val in PERSONAS:
+        persona = persona_val
+    else:
+        print(f"Warning on line {p.lineno(1)}: Unknown persona '{persona_val}'. Defaulting to BALANCED.")
+        persona = "BALANCED"
+    p[0] = ('persona', persona)
+
+def p_task_block(p):
+    '''task_block : TASK VALUE task_attributes END'''
+    task_dict = {'name': p[2]}
+    for attr in p[3]:
+        task_dict.update(attr)
+    
+    # Validate required fields
+    required_keys = ["SUBJECT", "DUE", "PRIORITY", "DURATION", "STATUS"]
+    missing = [key for key in required_keys if key not in task_dict]
+    if missing:
+        raise DSLSyntaxError(f"Task '{task_dict.get('name', 'UNKNOWN')}' is missing fields: {', '.join(missing)}", p.lineno(1))
         
-    return persona, tasks
+    p[0] = ('task', task_dict)
+
+def p_task_attributes(p):
+    '''task_attributes : task_attributes task_attribute
+                       | empty'''
+    if len(p) == 3:
+        if p[2]:
+            p[0] = p[1] + [p[2]]
+        else:
+            p[0] = p[1]
+    else:
+        p[0] = []
+
+def p_task_attribute(p):
+    '''task_attribute : SUBJECT VALUE
+                      | DUE VALUE
+                      | PRIORITY VALUE
+                      | DURATION VALUE
+                      | STATUS VALUE'''
+    key = p[1]
+    val = p[2]
+    lineno = p.lineno(1)
+    
+    if key == 'DURATION':
+        if val.endswith("h"):
+            try:
+                duration_hours = int(val[:-1])
+                p[0] = {'DURATION': val, 'duration_hours': duration_hours}
+            except ValueError:
+                raise DSLSyntaxError(f"Invalid DURATION format '{val}'. Must be an integer followed by 'h' (e.g., 3h).", lineno)
+        else:
+            raise DSLSyntaxError("DURATION must end with 'h' (e.g., 3h).", lineno)
+    elif key == 'PRIORITY':
+        priority = val.upper()
+        if priority not in PRIORITY_ORDER:
+            raise DSLSyntaxError(f"Invalid PRIORITY '{priority}'. Must be HIGH, MEDIUM, or LOW.", lineno)
+        p[0] = {'PRIORITY': priority, 'priority_val': PRIORITY_ORDER[priority]}
+    elif key == 'STATUS':
+        status = val.upper()
+        if status not in ["PENDING", "COMPLETED"]:
+            raise DSLSyntaxError(f"Invalid STATUS '{status}'. Must be PENDING or COMPLETED.", lineno)
+        p[0] = {'STATUS': status}
+    elif key == 'DUE':
+        try:
+            due_date = datetime.strptime(val, "%Y-%m-%d").date()
+            p[0] = {'DUE': val, 'due_date': due_date}
+        except ValueError:
+            raise DSLSyntaxError(f"Invalid DUE date format '{val}'. Must be YYYY-MM-DD.", lineno)
+    else:
+        p[0] = {key: val}
+
+def p_empty(p):
+    'empty :'
+    pass
+
+def p_error(p):
+    if p:
+        raise DSLSyntaxError(f"Syntax error at '{p.value}'", p.lineno)
+    else:
+        raise DSLSyntaxError("Reached end of file without closing the last TASK block with END.")
 def schedule_tasks(persona, tasks, start_date_str):
     """
     Schedules pending tasks based on the persona's study windows, task priority, and deadlines.

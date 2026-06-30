@@ -6,3 +6,5 @@ venv/
 ENV/
 env/
 .DS_Store
+parser.out
+parsetab.py
