@@ -332,26 +332,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p>All parsed tasks are either completed or could not be mapped within scheduling ranges.</p>
                 </div>`;
         } else {
+            const table = document.createElement('table');
+            table.className = 'schedule-table';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Task Name</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            `;
+            const tbody = table.querySelector('tbody');
+
             sortedDays.forEach(dayStr => {
                 const dateObj = new Date(dayStr + 'T00:00:00');
-                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const options = { weekday: 'short', month: 'short', day: 'numeric' };
                 const dayTitleText = dateObj.toLocaleDateString('en-US', options);
 
-                const dayCard = document.createElement('div');
-                dayCard.className = 'day-card';
-
-                const title = document.createElement('h3');
-                title.className = 'day-title';
-                title.innerText = dayTitleText;
-                dayCard.appendChild(title);
-
-                const sessionsDiv = document.createElement('div');
-                sessionsDiv.className = 'day-sessions';
-
-                // Sort slots chronologically within day
                 const slots = data.schedule[dayStr].sort((a, b) => a.hour_start - b.hour_start);
 
-                // Group consecutive hours of the same task for a cleaner presentation
+                // Group consecutive hours of the same task
                 const groupedSlots = [];
                 let currentSlot = null;
 
@@ -369,35 +374,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     groupedSlots.push(currentSlot);
                 }
 
-                groupedSlots.forEach(slot => {
-                    const sessionSlot = document.createElement('div');
-                    sessionSlot.className = 'session-slot';
-
-                    // Format Time range
+                groupedSlots.forEach((slot, index) => {
+                    const tr = document.createElement('tr');
+                    
                     const startFmt = String(slot.hour_start).padStart(2, '0') + ':00';
                     const endFmt = String(slot.hour_end).padStart(2, '0') + ':00';
 
-                    sessionSlot.innerHTML = `
-                        <div class="session-time">
-                            <i class="fa-regular fa-clock"></i>
-                            <span>${startFmt} - ${endFmt}</span>
-                        </div>
-                        <div class="session-details">
-                            <div class="session-info">
-                                <span class="session-task">${slot.task_name}</span>
-                                <span class="session-subject">${slot.subject.replace(/_/g, ' ')}</span>
-                            </div>
-                            <div class="session-badges">
-                                ${slot.is_late ? '<span class="badge-late">Late / Past Due</span>' : ''}
-                            </div>
-                        </div>`;
+                    // Only show the date for the first slot of the day
+                    const dateCell = index === 0 ? `<td class="date-cell" rowspan="${groupedSlots.length}"><strong>${dayTitleText}</strong></td>` : '';
                     
-                    sessionsDiv.appendChild(sessionSlot);
+                    tr.innerHTML = `
+                        ${dateCell}
+                        <td>${startFmt} - ${endFmt}</td>
+                        <td><strong>${slot.task_name}</strong></td>
+                        <td>${slot.subject.replace(/_/g, ' ')}</td>
+                        <td>${slot.is_late ? '<span class="badge-late">Late / Past Due</span>' : '<span class="badge-ontime">On Time</span>'}</td>
+                    `;
+                    tbody.appendChild(tr);
                 });
-
-                dayCard.appendChild(sessionsDiv);
-                timelineContainer.appendChild(dayCard);
             });
+            timelineContainer.appendChild(table);
         }
 
         // Completed Tasks Summary

@@ -1,7 +1,7 @@
 import os
 from datetime import date
 from flask import Flask, request, jsonify, render_template
-from parser import parse_dsl_lines, schedule_tasks, DSLSyntaxError, PERSONAS, register_custom_persona
+from parser import parse_dsl_content, schedule_tasks, DSLSyntaxError, PERSONAS, register_custom_persona
 
 app = Flask(__name__)
 
@@ -23,8 +23,7 @@ def get_schedule():
         start_date = "2026-06-18"
 
     try:
-        lines = dsl_content.splitlines()
-        persona, tasks = parse_dsl_lines(lines)
+        persona, tasks = parse_dsl_content(dsl_content)
 
         if persona_override:
             persona_override = persona_override.upper()

@@ -826,6 +826,51 @@ html {
 }
 
 /* ==========================================================================
+   SCHEDULE TABLE
+   ========================================================================== */
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--inner-radius);
+    overflow: hidden;
+}
+
+.schedule-table th, .schedule-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.schedule-table th {
+    background: rgba(255, 255, 255, 0.05);
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--accent-light);
+}
+
+.schedule-table tr:last-child td {
+    border-bottom: none;
+}
+
+.schedule-table td.date-cell {
+    border-right: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.badge-ontime {
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    color: var(--success);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+/* ==========================================================================
    FOOTER
    ========================================================================== */
 .app-footer {

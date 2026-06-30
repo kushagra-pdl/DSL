@@ -1,6 +1,7 @@
 import sys
 import os
 from datetime import datetime, timedelta
+# pyrefly: ignore [missing-import]
 import ply.lex as lex
 import ply.yacc as yacc
 # Default start date for scheduling (tomorrow relative to current conversation local time 2026-06-17)
